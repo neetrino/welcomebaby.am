@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { syncOrderById } from '@/lib/crm/sync'
 import type { OrderSummary, OrdersListResponse } from '@/types'
 
 const DEFAULT_PAGE_SIZE = 10
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    const { name, phone, address, paymentMethod, notes, items, total, deliveryTime, deliveryTypeId } = body
+    const { name, phone, address, paymentMethod, notes, items, total, deliveryTime, deliveryTypeId, cartId } = body
 
     // Валидация обязательных полей
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -171,6 +172,8 @@ export async function POST(request: NextRequest) {
     const paymentMethodVal = paymentMethod && typeof paymentMethod === 'string' ? paymentMethod : 'cash'
     const isOnlinePayment = paymentMethodVal === 'idram'
     const paymentStatus = isOnlinePayment ? 'PENDING' : null
+    const cartIdVal =
+      cartId && typeof cartId === 'string' && cartId.trim() ? cartId.trim() : null
     // Наличные/карта при получении — заказ сразу «принят», оплата потом; онлайн — PENDING до оплаты
     const orderStatus = isOnlinePayment ? 'PENDING' : 'CONFIRMED'
 
@@ -188,6 +191,7 @@ export async function POST(request: NextRequest) {
         paymentMethod: paymentMethodVal,
         deliveryTime: deliveryTime && typeof deliveryTime === 'string' ? deliveryTime : null,
         deliveryTypeId: deliveryTypeIdVal,
+        paymentData: cartIdVal ? { cartId: cartIdVal } : null,
         items: {
           create: items.map((item: { productId?: string; quantity?: number; price?: number }) => ({
             productId: String(item?.productId ?? ''),
@@ -211,6 +215,11 @@ export async function POST(request: NextRequest) {
     })
 
     logger.info('Order created successfully:', order.id)
+
+    if (!isOnlinePayment) {
+      void syncOrderById(order.id, cartIdVal ?? undefined)
+    }
+
     return NextResponse.json(order, { status: 201 })
   } catch (error) {
     // Логируем полные детали только на сервере

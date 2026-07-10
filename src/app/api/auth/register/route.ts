@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { buildRegisterPayload, syncRegisterToCrm } from '@/lib/crm/sync'
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,6 +59,14 @@ export async function POST(request: NextRequest) {
 
     // Возвращаем пользователя без пароля
     const { password: _, ...userWithoutPassword } = user
+
+    void syncRegisterToCrm(
+      buildRegisterPayload({
+        name,
+        email,
+        phone,
+      })
+    )
 
     return NextResponse.json(
       { message: 'Пользователь успешно создан', user: userWithoutPassword },

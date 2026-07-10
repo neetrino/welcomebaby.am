@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { getIdramCredentials, verifyIdramChecksum } from '@/lib/payments/idram'
+import { syncOrderById } from '@/lib/crm/sync'
 
 const PLAIN_OK = () =>
   new Response('OK', {
@@ -111,10 +112,18 @@ export async function POST(request: NextRequest) {
         status: 'CONFIRMED',
         paymentStatus: 'SUCCESS',
         paymentId: transId,
-        paymentData: { payerAccount, transDate, amount: paymentAmount },
+        paymentData: {
+          ...(order.paymentData && typeof order.paymentData === 'object'
+            ? (order.paymentData as Record<string, unknown>)
+            : {}),
+          payerAccount,
+          transDate,
+          amount: paymentAmount,
+        },
       },
     })
     logger.info('Idram payment confirmed', { billNo, transId })
+    void syncOrderById(billNo)
     return PLAIN_OK()
   } catch (error) {
     logger.error('Idram callback error', error)

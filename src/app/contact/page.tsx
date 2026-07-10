@@ -1,4 +1,5 @@
 import Footer from '@/components/Footer'
+import { ContactForm } from '@/components/ContactForm'
 import { Phone, Mail, Clock, MapPin } from 'lucide-react'
 
 export default function ContactPage() {
@@ -82,6 +83,8 @@ export default function ContactPage() {
             </a>
           </div>
         </div>
+
+        <ContactForm />
 
         {/* Google Map */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-16 border border-gray-200">

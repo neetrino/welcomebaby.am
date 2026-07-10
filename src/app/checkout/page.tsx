@@ -8,6 +8,7 @@ import { useCart } from '@/hooks/useCart'
 import { useSession } from 'next-auth/react'
 import Footer from '@/components/Footer'
 import { formatPrice } from '@/utils/priceUtils'
+import { getOrCreateCartId } from '@/utils/cartId'
 
 interface UserProfile {
   id: string
@@ -202,6 +203,7 @@ export default function CheckoutPage() {
       const orderData = {
         ...formData,
         deliveryTypeId: formData.deliveryTypeId || null,
+        cartId: getOrCreateCartId(),
         items: items.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
