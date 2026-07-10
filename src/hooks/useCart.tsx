@@ -3,6 +3,8 @@
 import { createContext, useContext, useReducer, ReactNode, useEffect } from 'react'
 import { Product, CartItem, CartContextType } from '@/types'
 import { useHydration } from './useHydration'
+import { useCartCrmSync } from './useCartCrmSync'
+import { clearCartId } from '@/utils/cartId'
 
 // Ключ для localStorage
 const CART_STORAGE_KEY = 'pideh-cart'
@@ -89,6 +91,7 @@ function cartReducer(state: CartItem[], action: CartAction): CartItem[] {
     case 'CLEAR_CART':
       newState = []
       clearCartFromStorage()
+      clearCartId()
       break
     
     case 'LOAD_CART':
@@ -122,6 +125,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [isHydrated])
 
+  const getTotalPrice = () => {
+    return items.reduce((total, item) => {
+      const price = item.product.salePrice || item.product.price
+      return total + (price * item.quantity)
+    }, 0)
+  }
+
+  useCartCrmSync({ items, isHydrated, getTotalPrice })
+
   const addItem = (product: Product, quantity: number = 1) => {
     dispatch({ type: 'ADD_ITEM', payload: { product, quantity } })
   }
@@ -136,13 +148,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => {
     dispatch({ type: 'CLEAR_CART' })
-  }
-
-  const getTotalPrice = () => {
-    return items.reduce((total, item) => {
-      const price = item.product.salePrice || item.product.price
-      return total + (price * item.quantity)
-    }, 0)
   }
 
   const getTotalItems = () => {
